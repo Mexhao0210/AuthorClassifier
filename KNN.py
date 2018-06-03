@@ -9,12 +9,11 @@ from gensim.models import KeyedVectors
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
-from keras.preprocessing.sequence import pad_sequences
 
 embedding_file = "GoogleNews-vectors-negative300.bin.gz";
 word2vec_embeddings = KeyedVectors.load_word2vec_format(embedding_file, binary=True)
 
-
+# Function to perform basic sentence cleaning
 def preprocess_text(sent):
     sent = str(sent)
     sent = sent.lower()
@@ -36,6 +35,7 @@ def preprocess_text(sent):
     sent = sent.split()
     return sent
 
+# Function to convert word ids to word embeddings
 def convert_to_embeddings(df):
 	global word2vec_embeddings
 	embeddings = 1 * np.random.randn(len(vocab) + 1, embed_dim) 
@@ -53,6 +53,7 @@ def convert_to_embeddings(df):
         embed_arr.append(temp)
     return np.asarray(embed_arr)
 
+# Function that converts each sentence to a sequence of unique word ids
 def convert_to_ids(X, vocab, inverse_vocab):
 	global word2vec_embeddings
 	stop_words = set(stopwords.words('english'))
@@ -75,29 +76,32 @@ if __name__=="__main__":
 	vocab = dict()
 	inverse_vocab = ['<UNK>']
 		
-	
+	# Read data
 	train_df = pd.read_csv('train.csv')
 	
+	# Seperate data into features and labels
 	Y = train_df['author']
 	Y = pd.DataFrame(Y, columns=['author'])
 	X = train_df.drop(columns=['author'])
 
+	# Convert sentences to word ids
     convert_to_ids(X, vocab, inverse_vocab)
 
-	max_sent_length = X.text.map(lambda x: len(x)).max()
-	max_sent_length
-
-	X_values = X.text
-	X_values = pad_sequences(X_values)
+    # Convert to embeddings
 	X_values = convert_to_embeddings(X_values)
 
+	# Convert author labels to categorical values
 	le = LabelEncoder()
 	Y['author'] = le.fit_transform(Y['author'])
 	Y = Y.as_matrix()
 	Y = Y.flatten()
+
+	# Split into test and train sets
 	X_train, X_test, Y_train, Y_test = train_test_split(X_values, Y, test_size=0.2, random_state=2)
 
+	# KNN classifier
 	neigh_classifier = KNeighborsClassifier(n_neighbors=7)
 	neigh_classifier.fit(X_train, Y_train)
 
+	# Final accuracy on the validation set
 	print(neigh_classifier.score(X_test, Y_test))
